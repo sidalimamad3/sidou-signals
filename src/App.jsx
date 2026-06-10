@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import LandingPage from './pages/LandingPage'
@@ -20,7 +20,7 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Toaster position="top-right" toastOptions={{
             style: { background: '#111827', color: '#E5E7EB', border: '1px solid rgba(255,255,255,0.1)' },
             success: { iconTheme: { primary: '#00B894', secondary: '#111827' } },
@@ -47,7 +47,7 @@ function App() {
               <Route path="users" element={<AdminUsers />} />
             </Route>
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </AuthProvider>
     </ThemeProvider>
   )
