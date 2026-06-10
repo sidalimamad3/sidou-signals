@@ -10,62 +10,37 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const getRole = (u) => {
+    if (!u) return 'free'
+    return u.user_metadata?.role || 'free'
+  }
+
+  const buildProfile = (u) => {
+    if (!u) return null
+    return {
+      id: u.id,
+      full_name: u.user_metadata?.full_name || '',
+      role: getRole(u),
+      avatar_url: u.user_metadata?.avatar_url || null,
+      created_at: u.created_at,
+    }
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
+      setProfile(buildProfile(session?.user))
+      setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setLoading(false)
-      }
+      setProfile(buildProfile(session?.user))
+      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
   }, [])
-
-  const fetchProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error && error.code === 'PGRST116') {
-        const newProfile = {
-          id: userId,
-          role: 'free',
-          created_at: new Date().toISOString(),
-        }
-        const { data: createdProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert(newProfile)
-          .select()
-          .single()
-
-        if (createError) throw createError
-        setProfile(createdProfile)
-      } else if (error) {
-        throw error
-      } else {
-        setProfile(data)
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const signUp = async (email, password, fullName) => {
     const { data, error } = await supabase.auth.signUp({
@@ -74,6 +49,7 @@ export function AuthProvider({ children }) {
       options: {
         data: {
           full_name: fullName,
+          role: 'free',
         },
       },
     })
@@ -99,7 +75,7 @@ export function AuthProvider({ children }) {
 
   const resetPassword = async (email) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}${window.location.pathname}#/reset-password`,
     })
     if (error) throw error
     return data
@@ -110,6 +86,15 @@ export function AuthProvider({ children }) {
       password: newPassword,
     })
     if (error) throw error
+    return data
+  }
+
+  const updateRole = async (newRole) => {
+    const { data, error } = await supabase.auth.updateUser({
+      data: { role: newRole },
+    })
+    if (error) throw error
+    setProfile(prev => prev ? { ...prev, role: newRole } : null)
     return data
   }
 
@@ -126,10 +111,10 @@ export function AuthProvider({ children }) {
     signOut,
     resetPassword,
     updatePassword,
+    updateRole,
     isAdmin,
     isPremium,
     isLifetime,
-    fetchProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
